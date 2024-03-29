@@ -1,8 +1,5 @@
 import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
-import { authConfig } from './auth.config';
-import { z } from 'zod';
-import { getUser } from './app/lib/data';
 
 export const {
   handlers: { GET, POST },
@@ -10,25 +7,28 @@ export const {
   signIn,
   signOut,
 } = NextAuth({
-  ...authConfig,
-  providers: [
-    Google({
-      // async authorize(credentials) {
-      //   const parsedCredentials = z
-      //     .object({ email: z.string().email(), password: z.string() })
-      //     .safeParse(credentials);
+  providers: [Google],
+  pages: {
+    signIn: '/',
+    signOut: '/',
+  },
+  callbacks: {
+    authorized({ auth, request: { nextUrl } }) {
+      const isLoggedIn = !!auth?.user;
+      const isOnContacts = nextUrl.pathname.startsWith('/contacts');
+      const isOnSettings = nextUrl.pathname.startsWith('/settings');
 
-      //   if (parsedCredentials.success) {
-      //     const { email, password } = parsedCredentials.data;
-      //     const user = await getUser(email);
-      //     if (!user) return null;
-      //     const passwordsMatch = await bcrypt.compare(password, user.password);
-      //     if (passwordsMatch) return user;
-      //   }
+      if (!isLoggedIn) return false;
 
-      //   console.log('Invalid credentials');
-      //   return null;
-      // },
-    }),
-  ],
+      if (isLoggedIn && (isOnSettings || isOnContacts)) {
+        return true
+      }
+      else if (isLoggedIn) {
+        return Response.redirect(new URL('/settings', nextUrl));
+      }
+      else {
+        return false
+      }
+    },
+  },
 });
